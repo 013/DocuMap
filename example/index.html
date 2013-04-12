@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>DocuMap</title>
+		<link rel="stylesheet" href="css/stylesheet.css" type="text/css" media="screen"/>
+			<link rel='shortcut icon' href="favicon.ico" type="image/x-icon" />
+		</head>
+		<body>
+			<div id="map"></div>
+			<div class="container">
+			<div id="lower_half" class="row">
+				<div id="categories" class="span4">
+					<h2>Categories:</h2>
+					<form id="cat_f" name="cat_c">
+					<ul class="cat_choice">
+						<li><label class="checkbox">
+							<input name="'new'" type="checkbox" value="1" unchecked>
+							New
+						</label></li>
+
+						<li><label class="checkbox">
+							<input name="'newsandpolitics'" type="checkbox" value="1">
+							News & Politics
+						</label></li>
+
+						<li><label class="checkbox">
+							<input name="'technology'" type="checkbox" value="1">
+							Technology
+						</label></li>
+
+						<li><label class="checkbox">
+							<input name="'food'" type="checkbox" value="1">
+							Food
+						</label></li>
+
+						<li><label class="checkbox">
+							<input name="'crime'" type="checkbox" value="1">
+							Crime
+						</label></li>
+
+						<li><label class="checkbox">
+							<input name="'culture'" type="checkbox" value="1">
+							Culture
+						</label></li>
+					</ul>
+					</form>
+				</div>
+				<div id="doc_info" class="span4">
+					<h2>Documentary Info</h2>
+				</div>
+				<div id="other_info" class="span4">
+				<button class="test">Test</button>
+				</div>
+			</div>
+			</div>
+
+			<script src="jquery/jquery.min.js" ></script>
+			<script src="jquery/jquery-jvectormap-1.2.2.min.js" ></script>
+			<script src="jquery/jquery-jvectormap-world-mill-en.js" ></script>
+		
+		<script src="js/document.js" ></script>
+	</body>
+</html>
