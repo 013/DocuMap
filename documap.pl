@@ -47,11 +47,12 @@ undef $query_h;
 sub create_static_doc {
 	# Remove old file
 	unlink "index.html";
-	unlink glob("js/*.js");
 	if (length($_[0] // '') ) {
 		print $_[0];
 		# create_js_cat($_[0]);
+		unlink glob("js/$_[0].js");
 	} else {
+		unlink glob("js/*.js");
 		my $query = "SELECT DISTINCT category FROM $table";
 		my $query_h = $dbh->prepare($query);
 		$query_h->execute();
@@ -112,8 +113,8 @@ sub create_js_cat {
 		print JSFILE "documentaries = documentaries.concat($var_nam);\n";
 		close(JSFILE);
 	} else {
-		
-		my $c_codes = "var gdpData = {};";
+		print JSFILE $gdp;
+		#my $c_codes = "var gdpData = {};";
 	}
 	$query_h->finish;
 	return 0;
@@ -139,7 +140,153 @@ sub insert_doc {
 }
 
 #insert_doc();
-create_js_cat();
+#create_js_cat();
 #create_static_doc();
 #check_dead_links(1);
+
+
 $dbh->disconnect;
+
+our $JS =
+"
+//
+// 09/04/13 - 18:33
+//
+//
+var open_files = ['new'];
+
+	\$(document).ready(function() {
+		\$(function(){
+			var map,
+
+			map = new jvm.WorldMap({
+				container: \$('#map'),
+				map: 'world_mill_en',
+				regionsSelectable: true,
+				regionsSelectableOne: true,
+				markersSelectable: true,
+				markersSelectableOne: true,
+				series: {
+					regions: [{
+						values: gdpData,
+						scale: ['#C8EEFF', '#0071A4'],
+						normalizeFunction: 'polynomial'
+					}],
+				},
+				onRegionLabelShow: function(event, label, index) {
+					if (! gdpData[index]) {
+						var total_docs = 0;
+					} else {
+						var total_docs = gdpData[index];
+					}
+					label.html(label.html()+' (Documentaries: '+total_docs+')');
+				},
+				//scaleColors: ['#C8EEFF', '#0071A4'],
+				normalizeFunction: 'polynomial',
+				hoverOpacity: 0.4,
+				hoverColor: false,
+				markerStyle: {
+					initial: {
+						fill: '#0071A4',
+						stroke: '#fff'
+					},
+					hover: {
+						stroke: '#fff',
+						r: 7
+					},
+					selected: {
+						fill: '#000'
+					}
+				},
+				regionStyle: {
+					selected: {
+						fill: '#7070B6'
+					}
+				},
+				onRegionSelected: function(e, el, code) {
+					\$('#other_info').html(\"<p>\"+el+\"</p>\");
+				},
+				onMarkerSelected: function(e, el, code) {
+					name = arr[el][\"name\"];
+					// Needs to be cleaned up -
+					for (var p = 0; p < documentaries.length; p++) {
+						a_name = documentaries[p][\"name\"];
+						if (a_name == name) {
+							\$('#doc_info').html(
+								\"<h2>\"+documentaries[p][\"name\"] + \"</h2>\"+
+								//\"<p>\"+documentaries[p][\"category\"]+
+								\"<p><label>Link: </label><a href=\\\"\"+documentaries[p][\"link\"]+\"\\\">Click</a></p><p>\" +
+								documentaries[p][\"description\"]+\"<p>\"
+							);
+						}
+					}
+				},
+				backgroundColor: '#383f47'
+			});
+			\$(\".checkbox\").click(function() {
+				//\$.inArray(value, array)
+				window.arr=[];
+
+				w_cats = \$(\"#cat_f\").serializeArray();
+
+				map.removeAllMarkers();
+
+				for (var i = 0; i < w_cats.length; i++) {
+					wanted_cat = w_cats[i][\"name\"];
+
+					fl_js = wanted_cat.replace(/\\'/g, '');
+					// If the file isn't in the open array, add to array and open file
+					if (\$.inArray(fl_js, open_files) == -1) {
+						open_files.push(fl_js);
+
+						\$.getScript(\"js/\"+ fl_js + '.js', function(data, textStatus, jqxhr) {
+						for (var p = 0; p < documentaries.length; p++) {
+							a_cat = documentaries[p][\"category\"];
+							//If the wanted category is a substring of a_cat
+							if (a_cat.indexOf(wanted_cat) !== -1) {
+								var obj = {
+									latLng: documentaries[p][\"latLng\"],
+									name: documentaries[p][\"name\"]
+								};
+								window.arr.push(obj);
+							}
+						}
+						map.addMarkers(window.arr);
+						});
+
+					} else {
+					for (var p = 0; p < documentaries.length; p++) {
+						a_cat = documentaries[p][\"category\"];
+						//If the wanted category is a substring of a_cat
+						if (a_cat.indexOf(wanted_cat) !== -1) {
+							var obj = {
+								latLng: documentaries[p][\"latLng\"],
+								name: documentaries[p][\"name\"]
+							};
+							window.arr.push(obj);
+						}
+					}
+					map.addMarkers(window.arr);
+					}
+				}
+		});
+		// Checks the new category, also running the function to add markers
+		\$('input[type=\"checkbox\"]').prop(\"checked\", false);
+		\$('input[name=\"\\'new\\'\"]').click();
+
+		\$(\".test\").click(function() {
+			//
+			\$.getScript(\"js/added.js\");
+		});
+
+	});
+});
+
+
+//var arr= [];
+
+";
+
+#open(TFILE, ">>test.txt");
+#print TFILE $JS;
+#close(TFILE);
