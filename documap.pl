@@ -30,13 +30,9 @@ PRIMARY KEY     (id)
 ";
 # [^\\]\"(.*?)[^\\]\"
 # \\"\1\\"
-our $JS =
+our $JS = # This is only shortened the help the readability of this perl script
 "var open_files=[\"new\"];\$(document).ready(function(){\$(function(){var e,e=new jvm.WorldMap({container:\$(\"#map\"),map:\"world_mill_en\",regionsSelectable:true,regionsSelectableOne:true,markersSelectable:true,markersSelectableOne:true,series:{regions:[{values:gdpData,scale:[\"#C8EEFF\",\"#0071A4\"],normalizeFunction:\"polynomial\"}]},onRegionLabelShow:function(e,t,n){if(!gdpData[n]){var r=0}else{var r=gdpData[n]}t.html(t.html()+\" (Documentaries: \"+r+\")\")},normalizeFunction:\"polynomial\",hoverOpacity:.4,hoverColor:false,markerStyle:{initial:{fill:\"#0071A4\",stroke:\"#fff\"},hover:{stroke:\"#fff\",r:7},selected:{fill:\"#000\"}},regionStyle:{selected:{fill:\"#7070B6\"}},onRegionSelected:function(e,t,n){\$(\"#other_info\").html(\"<p>\"+t+\"</p>\")},onMarkerSelected:function(e,t,n){name=arr[t][\"name\"];for(var r=0;r<documentaries.length;r++){a_name=documentaries[r][\"name\"];if(a_name==name){\$(\"#doc_info\").html(\"<h2>\"+documentaries[r][\"name\"]+\"</h2>\"+'<p><label>Link: </label><a href=\"'+documentaries[r][\"link\"]+'\">Click</a></p><p>'+documentaries[r][\"description\"]+\"<p>\")}}},backgroundColor:\"#383f47\"});\$(\".checkbox\").click(function(){window.arr=[];w_cats=\$(\"#cat_f\").serializeArray();e.removeAllMarkers();for(var t=0;t<w_cats.length;t++){wanted_cat=w_cats[t][\"name\"];fl_js=wanted_cat.replace(/\'/g,\"\");if(\$.inArray(fl_js,open_files)==-1){open_files.push(fl_js);\$.getScript(\"js/\"+fl_js+\".js\",function(t,n,r){for(var i=0;i<documentaries.length;i++){a_cat=documentaries[i][\"category\"];if(a_cat.indexOf(wanted_cat)!==-1){var s={latLng:documentaries[i][\"latLng\"],name:documentaries[i][\"name\"]};window.arr.push(s)}}e.addMarkers(window.arr)})}else{for(var n=0;n<documentaries.length;n++){a_cat=documentaries[n][\"category\"];if(a_cat.indexOf(wanted_cat)!==-1){var r={latLng:documentaries[n][\"latLng\"],name:documentaries[n][\"name\"]};window.arr.push(r)}}e.addMarkers(window.arr)}}});\$('input[type=\"checkbox\"]').prop(\"checked\",false);\$(\"input[name=\\\"'new'\\\"]\").click();\$(\".test\").click(function(){\$.getScript(\"js/added.js\")})})})";
-
-# open(TFILE, ">>test2.txt");
-# print TFILE $JS;
-# close(TFILE);
-# die();
+our $HTML = ""; # Probably put shortened HTML here
 
 #Connect to DB
 our $dbh = DBI->connect("DBI:mysql:$database:localhost:$port", $user, $pass)
@@ -55,15 +51,16 @@ undef $query_h;
 # js/*.js                   |
 # --------------------------*
 sub create_static_doc {
-	# Remove old file
+	# Remove old index file
 	unlink "index.html";
 	if (length($_[0] // '') ) {
-		print $_[0];
-		# create_js_cat($_[0]);
+		# If a variable is passed, only created that one JS file
 		unlink glob("js/$_[0].js");
+		create_js_cat($_[0]);
 	} else {
+		# Assumes all JS files want to be re-created
 		unlink glob("js/*.js");
-		my $query = "SELECT DISTINCT category FROM $table";
+		my $query = "SELECT DISTINCT category FROM $table"; # Get a list of categories
 		my $query_h = $dbh->prepare($query);
 		$query_h->execute();
 		
@@ -72,10 +69,11 @@ sub create_static_doc {
 		}
 		
 		while (my @data = $query_h->fetchrow_array()) {
-			#print $data[0] . "\n";
 			my $cat = $data[0];
+			# Get each category between single quotes
+			# Since the category column is like :
+			# 'new', 'technology', 'SomeOtherCategory'
 			create_js_cat($_) for $cat =~ /\'(.*?)\'/g;
-			#create_js_cat($cat);
 		}
 		# This will create js/documentaries.js
 		create_js_cat();
@@ -87,39 +85,49 @@ sub create_static_doc {
 	#	Create the index.html
 	#
 
+	open(HTML_FILE, ">>index.html");
+	print HTML_FILE $HTML;
+	close(HTML_FILE);
+
+	return 0;
 }
 
 sub create_js_cat {
 	# Create each category's JS File
 	my $var_nam = "documentaries";
 	if (length($_[0] // '')) {
+		# If a variable has been passed, that is now the var and file name
 		$var_nam = $_[0];
 	}
 	
-	my $category = '%category%';
+	#my $category = '%category%'; # Don't think is needed ?
 	my $query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE category LIKE ?";
 	my $query_h = $dbh->prepare($query);
 	if ($var_nam eq "documentaries" ) {
+		# If we are creating the documentaries.js file, we only want to include new documentaries
 		$query_h->bind_param( 1, "%new%");
 	} else {
 		$query_h->bind_param( 1, "%$var_nam%");
 	}
 	$query_h->execute();
 	
-	my $date = strftime "%d/%m/%Y", localtime;
+	my $date = strftime "%d/%m/%Y", localtime; 
+	# Time at the top of the file so we know when it was made
 	my $file_c = "//\n// $date\n//\n//\n$var_nam = [\n";
+	# Temp variable for each documentary
 	my $entry;
 	my $gdp = "var gdpData = {\n";
+	# Temp variable for gdpData
 	my $xx;
 	while (my @data = $query_h->fetchrow_array()) {
-		print "$var_nam - $data[5]\n\n";
 		$entry = sprintf("{latLng: [%.2f, %.2f], name: \"%s\", description: \"%s\", category: \"%s\", link: \"%s\"},\n", $data[2], $data[3], $data[1], $data[4], $data[5], $data[6]);
 		# [2] [3] - LatLng, [1] - Name, [4] - Description, [5] - Category, [6] - Link
 		$file_c .= $entry;
 		# Count Country_codes
 		my $cc = $data[7];
 		my $qh = $dbh->prepare("SELECT COUNT(country_code) FROM $table WHERE country_code=?");
-		$qh->execute($cc);
+		$qh->bind_param(1, $cc);
+		$qh->execute();
 		$xx = $qh->fetchrow();
 		$gdp .= "\"$cc\" : $xx,\n";
 	}
@@ -159,7 +167,7 @@ sub check_dead_links {
 sub insert_doc {
 	my $name = $_[0];
 	my $description = $_[1];
-	my $query = "INSERT INTO $table VALUES(NULL, 'name3', 'description3', 103, 53, \"'test', 'aaa'\", 'UK', 'http://swiftler.com/3')";
+	my $query = "INSERT INTO $table VALUES(NULL, 'name3', 'description3', 103, 53, \"'new', 'aaa'\", 'UK', 'http://swiftler.com/3')";
 	my $query_h = $dbh->prepare($query);
 	$query_h->execute() or die "Error inserting into database: " . $DBI::errstr;
 }
