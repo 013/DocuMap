@@ -95,19 +95,27 @@ sub create_static_doc {
 sub create_js_cat {
 	# Create each category's JS File
 	my $var_nam = "documentaries";
-	if (length($_[0] // '')) {
+	my $query = "";
+	if (length($_[0] // '') && $_[1] ne 1) {
 		# If a variable has been passed, that is now the var and file name
 		$var_nam = $_[0];
+		#my $category = '%category%'; # Don't think is needed ?
+		$query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE category LIKE ?";
+	}
+	if (length($_[1] // '') && $_[1] eq 1) {
+		my $cc = 1;
+		$var_nam = $_[0];
+		$query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE country_code = ?";
 	}
 	
-	#my $category = '%category%'; # Don't think is needed ?
-	my $query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE category LIKE ?";
 	my $query_h = $dbh->prepare($query);
 	if ($var_nam eq "documentaries" ) {
 		# If we are creating the documentaries.js file, we only want to include new documentaries
 		$query_h->bind_param( 1, "%new%");
-	} else {
+	} elsif ($_[1] ne 1) {
 		$query_h->bind_param( 1, "%$var_nam%");
+	} else {
+		$query_h->bind_param( 1, $var_nam);
 	}
 	$query_h->execute();
 	
@@ -139,7 +147,7 @@ sub create_js_cat {
 		$file_c .= "\n];\n";
 	}
 	
-	open(JSFILE, ">>js/$var_nam.js");
+	open(JSFILE, ">>", "js/$var_nam.js") or die("Can't open js/$var_nam.js");
 	print JSFILE $file_c;
 	
 	if ($var_nam ne "documentaries" ) {
@@ -153,15 +161,41 @@ sub create_js_cat {
 	return 0;
 }
 
+sub create_js_cc {
+	my $query = "SELECT DISTINCT country_code FROM $table";
+	my $query_h = $dbh->prepare($query);
+	$query_h->execute();
+	
+	if ($query_h->rows == 0) {
+		return "No country codes found.\n";
+	}
+	
+	while (my @data = $query_h->fetchrow_array()) {
+		# Send the cc to the create_js_cat() function
+		my $cc = $data[0];
+		#print $cc;
+		unlink "js/$cc.js";
+		create_js_cat($cc, 1)
+	}
+	
+	return 0;
+}
+
 # Check for dead links
 sub check_dead_links {
+	# A youtube video would 
 	my $rem_links = 0;
 	if (length($_[0] // '') && $_[0] == 1 ) {
 		$rem_links = 1;
 	}
-	my $query = "SELECT link FROM $table";
+	my $query = "SELECT id, link FROM $table";
+	my $query_h = $dbh->prepare($query);
+	$query_h->execute();
+	while (my @data = $query_h->fetchrow_array()) {
+		print "$data[0] - $data[1]\n";
+	}
 	
-	print $rem_links;
+	#print $rem_links;
 }
 
 sub insert_doc {
@@ -174,9 +208,9 @@ sub insert_doc {
 
 #insert_doc();
 #create_js_cat();
-create_static_doc();
+#create_js_cc();
+#create_static_doc();
 #check_dead_links(1);
-
 
 $dbh->disconnect;
 
