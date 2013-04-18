@@ -38,12 +38,17 @@ our $HTML = "<!DOCTYPE html><html><head><title>DocuMap</title><link rel=\"styles
 our $dbh = DBI->connect("DBI:mysql:$database:localhost:$port", $user, $pass)
 	or die "Error connecting to MySQL Database:" . $DBI::errstr;
 
-# Test a query
-my $query_h = $dbh->prepare($tbl_struct);
-
-$query_h->execute() # Creates the table - if it doesn't exist
-	or die "Error quering database: " . $DBI::errstr;
-undef $query_h;
+sub test_db {
+	$_[0] = $tbl_struct;
+	# Test a query
+	my $query_h = $dbh->prepare($tbl_struct);
+	
+	$query_h->execute() # Creates the table - if it doesn't exist
+		or die "Error quering database: " . $DBI::errstr;
+	undef $query_h;
+	
+	return 0;
+}
 
 # --------------------------*
 # Creates static files:     |
@@ -199,13 +204,46 @@ sub check_dead_links {
 }
 
 sub insert_doc {
-	my $name = $_[0];
-	my $description = $_[1];
-	my $query = "INSERT INTO $table VALUES(NULL, 'name3', 'description3', 103, 53, \"'new', 'aaa'\", 'UK', 'http://swiftler.com/3')";
+	my $name          = $_[0];
+	my $description   = $_[1]; # THERE
+	my $long          = $_[2]; # HAS
+	my $lat           = $_[3]; # TO
+	my $cat           = $_[4]; # BE
+	my $coun_c        = $_[5]; # A
+	my $link          = $_[6]; # BETTER
+	                           # WAY!!!!!!
+	my $query = "INSERT INTO $table VALUES(NULL, '?', '?', ?, ?, \"?\", '?', '?')";
+	
 	my $query_h = $dbh->prepare($query);
+	
+	$query_h->bind_param(1, $name);
+	$query_h->bind_param(2, $description); #
+	$query_h->bind_param(3, $long);        # Seriously?
+	$query_h->bind_param(4, $lat);         # Ryan
+	$query_h->bind_param(5, $cat);         # Please.
+	$query_h->bind_param(6, $coun_c);      #
+	$query_h->bind_param(7, $link);
+	
 	$query_h->execute() or die "Error inserting into database: " . $DBI::errstr;
 }
 
+sub clean_js {
+	# Clean documentary JS to escape and shit
+	
+	my $find = '([^\\])\"(.*?)\"([^\\])';
+	my $replace = '$1\"$2\"$3';
+
+	if ( length($_[0] // '') == 0 ) {
+		return "Pass an arguement\n";
+	}
+	my $JS = $_[0];
+	$JS =~ s/$find/$replace/g
+	
+	return $JS;
+}
+
+clean_js('ok');
+#test_db($tbl_struct);
 #insert_doc();
 #create_js_cat();
 #create_js_cc();
