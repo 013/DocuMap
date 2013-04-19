@@ -72,14 +72,23 @@ sub create_static_doc {
 		if ($query_h->rows == 0) {
 			return "No documentaries found.\n";
 		}
-		
+		my $HTML_category = '';
 		while (my @data = $query_h->fetchrow_array()) {
 			my $cat = $data[0];
 			# Get each category between single quotes
 			# Since the category column is like :
 			# 'new', 'technology', 'SomeOtherCategory'
-			create_js_cat($_) for $cat =~ /\'(.*?)\'/g;
+			for ($cat =~ /\'(.*?)\'/g) {
+				$HTML_category .= "<li><label class\"checkbox\">\n
+				<input name=\"'$_'\" type=\"checkbox\" value=\"1\">\n
+				$_\n
+				</label></li>";
+				create_js_cat($_);
+			}
 		}
+		#print $HTML_category . "\n";
+		$CUNT = "CUNT";
+		print $TEST;
 		# This will create js/documentaries.js
 		create_js_cat();
 		
@@ -101,7 +110,7 @@ sub create_js_cat {
 	# Create each category's JS File
 	my $var_nam = "documentaries";
 	my $query = "";
-	if (length($_[0] // '') && $_[1] ne 1) {
+	if (length($_[0] // '') && length($_[1] // '') == 0) {
 		# If a variable has been passed, that is now the var and file name
 		$var_nam = $_[0];
 		#my $category = '%category%'; # Don't think is needed ?
@@ -112,12 +121,15 @@ sub create_js_cat {
 		$var_nam = $_[0];
 		$query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE country_code = ?";
 	}
+	if ($var_nam eq "documentaries") {
+		$query = "SELECT id, name, lat, lng, description, category, link, country_code FROM $table WHERE category LIKE ?";
+	}
 	
 	my $query_h = $dbh->prepare($query);
 	if ($var_nam eq "documentaries" ) {
 		# If we are creating the documentaries.js file, we only want to include new documentaries
 		$query_h->bind_param( 1, "%new%");
-	} elsif ($_[1] ne 1) {
+	} elsif (length($_[1] // '') == 0) {
 		$query_h->bind_param( 1, "%$var_nam%");
 	} else {
 		$query_h->bind_param( 1, $var_nam);
@@ -204,51 +216,54 @@ sub check_dead_links {
 }
 
 sub insert_doc {
-	my $name          = $_[0];
-	my $description   = $_[1]; # THERE
-	my $long          = $_[2]; # HAS
-	my $lat           = $_[3]; # TO
-	my $cat           = $_[4]; # BE
-	my $coun_c        = $_[5]; # A
-	my $link          = $_[6]; # BETTER
-	                           # WAY!!!!!!
+	my ($name, $description, $long, $lat, $cat, $coun_c, $link) = @_;
+	
 	my $query = "INSERT INTO $table VALUES(NULL, '?', '?', ?, ?, \"?\", '?', '?')";
 	
 	my $query_h = $dbh->prepare($query);
 	
-	$query_h->bind_param(1, $name);
-	$query_h->bind_param(2, $description); #
-	$query_h->bind_param(3, $long);        # Seriously?
-	$query_h->bind_param(4, $lat);         # Ryan
-	$query_h->bind_param(5, $cat);         # Please.
-	$query_h->bind_param(6, $coun_c);      #
-	$query_h->bind_param(7, $link);
-	
-	$query_h->execute() or die "Error inserting into database: " . $DBI::errstr;
+	$query_h->execute(
+		$name, $description, $long, $lat, $cat, $coun_c, $link
+	) 
+		or die "Error inserting into database: " . $DBI::errstr;
 }
 
 sub clean_js {
 	# Clean documentary JS to escape and shit
-	
-	my $find = '([^\\])\"(.*?)\"([^\\])';
-	my $replace = '$1\"$2\"$3';
-
+	# This should also work for HTML
 	if ( length($_[0] // '') == 0 ) {
 		return "Pass an arguement\n";
 	}
 	my $JS = $_[0];
-	$JS =~ s/$find/$replace/g
-	
+	$JS =~ s/([\$"\\])/\\$1/g;
+	# Only escape $ and " - Other stuff can easily be added
 	return $JS;
 }
 
-clean_js('ok');
-#test_db($tbl_struct);
-#insert_doc();
-#create_js_cat();
-#create_js_cc();
-#create_static_doc();
-#check_dead_links(1);
+if (length($ARGV[0] // '') == 0) {
+	die("\t--test-db\t\t-t\n\t--insert\t\t-i\n\t--create-files\t\t-m\n\t--check-dead-links\t-d\n");
+}
+
+if ($ARGV[0] eq '--clean-js' || $ARGV[0] eq '-c') {
+	my $file = $ARGV[1];
+	my $content = do {
+		local $/ = undef;
+		open my $fh, "<", $file
+			or die "Error opening $file: $!\n";
+		<$fh>;
+	};
+	print clean_js($content);
+} elsif ($ARGV[0] eq '--test-db' || $ARGV[0] eq '-t') {
+	test_db($tbl_struct);
+} elsif ($ARGV[0] eq '--insert' || $ARGV[0] eq '-i') {
+	insert_doc();
+} elsif ($ARGV[0] eq '--create-files' || $ARGV[0] eq '-m') {
+	#create_js_cat();
+	#create_js_cc();
+	create_static_doc();
+} elsif ($ARGV[0] eq '--check-dead-links' || $ARGV[0] eq '-d') {
+	check_dead_links(1);
+}
 
 $dbh->disconnect;
 
