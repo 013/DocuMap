@@ -32,7 +32,8 @@ PRIMARY KEY     (id)
 # \\"\1\\"
 our $JS = # This is only shortened the help the readability of this perl script
 "var open_files=[\"new\"];\$(document).ready(function(){\$(function(){var e,e=new jvm.WorldMap({container:\$(\"#map\"),map:\"world_mill_en\",regionsSelectable:true,regionsSelectableOne:true,markersSelectable:true,markersSelectableOne:true,series:{regions:[{values:gdpData,scale:[\"#C8EEFF\",\"#0071A4\"],normalizeFunction:\"polynomial\"}]},onRegionLabelShow:function(e,t,n){if(!gdpData[n]){var r=0}else{var r=gdpData[n]}t.html(t.html()+\" (Documentaries: \"+r+\")\")},normalizeFunction:\"polynomial\",hoverOpacity:.4,hoverColor:false,markerStyle:{initial:{fill:\"#0071A4\",stroke:\"#fff\"},hover:{stroke:\"#fff\",r:7},selected:{fill:\"#000\"}},regionStyle:{selected:{fill:\"#7070B6\"}},onRegionSelected:function(e,t,n){\$(\"#other_info\").html(\"<p>\"+t+\"</p>\")},onMarkerSelected:function(e,t,n){name=arr[t][\"name\"];for(var r=0;r<documentaries.length;r++){a_name=documentaries[r][\"name\"];if(a_name==name){\$(\"#doc_info\").html(\"<h2>\"+documentaries[r][\"name\"]+\"</h2>\"+'<p><label>Link: </label><a href=\"'+documentaries[r][\"link\"]+'\">Click</a></p><p>'+documentaries[r][\"description\"]+\"<p>\")}}},backgroundColor:\"#383f47\"});\$(\".checkbox\").click(function(){window.arr=[];w_cats=\$(\"#cat_f\").serializeArray();e.removeAllMarkers();for(var t=0;t<w_cats.length;t++){wanted_cat=w_cats[t][\"name\"];fl_js=wanted_cat.replace(/\'/g,\"\");if(\$.inArray(fl_js,open_files)==-1){open_files.push(fl_js);\$.getScript(\"js/\"+fl_js+\".js\",function(t,n,r){for(var i=0;i<documentaries.length;i++){a_cat=documentaries[i][\"category\"];if(a_cat.indexOf(wanted_cat)!==-1){var s={latLng:documentaries[i][\"latLng\"],name:documentaries[i][\"name\"]};window.arr.push(s)}}e.addMarkers(window.arr)})}else{for(var n=0;n<documentaries.length;n++){a_cat=documentaries[n][\"category\"];if(a_cat.indexOf(wanted_cat)!==-1){var r={latLng:documentaries[n][\"latLng\"],name:documentaries[n][\"name\"]};window.arr.push(r)}}e.addMarkers(window.arr)}}});\$('input[type=\"checkbox\"]').prop(\"checked\",false);\$(\"input[name=\\\"'new'\\\"]\").click();\$(\".test\").click(function(){\$.getScript(\"js/added.js\")})})})";
-our $HTML = "<!DOCTYPE html><html><head><title>DocuMap</title><link rel=\"stylesheet\" href=\"css/stylesheet.css\" type=\"text/css\" media=\"screen\"/><link rel='shortcut icon' href=\"favicon.ico\" type=\"image/x-icon\"/></head><body><div id=\"map\"></div><div class=\"container\"><div id=\"lower_half\" class=\"row\"><div id=\"categories\" class=\"span4\"><h2>Categories:</h2><form id=\"cat_f\" name=\"cat_c\"><ul class=\"cat_choice\"><li><label class=\"checkbox\"><input name=\"'new'\" type=\"checkbox\" value=\"1\" unchecked>New</label></li><li><label class=\"checkbox\"><input name=\"'newsandpolitics'\" type=\"checkbox\" value=\"1\">News & Politics</label></li><li><label class=\"checkbox\"><input name=\"'technology'\" type=\"checkbox\" value=\"1\">Technology</label></li><li><label class=\"checkbox\"><input name=\"'food'\" type=\"checkbox\" value=\"1\">Food</label></li><li><label class=\"checkbox\"><input name=\"'crime'\" type=\"checkbox\" value=\"1\">Crime</label></li><li><label class=\"checkbox\"><input name=\"'culture'\" type=\"checkbox\" value=\"1\">Culture</label></li></ul></form></div><div id=\"doc_info\" class=\"span4\"><h2>Documentary Info</h2></div><div id=\"other_info\" class=\"span4\"><button class=\"test\">Test</button></div></div></div><script src=\"jquery/jquery.min.js\" ></script><script src=\"jquery/jquery-jvectormap-1.2.2.min.js\" ></script><script src=\"jquery/jquery-jvectormap-world-mill-en.js\" ></script><script src=\"js/documentaries.js\" ></script></body></html>";
+our $HTML = "<!DOCTYPE html><html><head><title>DocuMap</title><link rel=\"stylesheet\" href=\"css/stylesheet.css\" type=\"text/css\" media=\"screen\"/><link rel='shortcut icon' href=\"favicon.ico\" type=\"image/x-icon\"/></head><body><div id=\"map\"></div><div class=\"container\"><div id=\"lower_half\" class=\"row\"><div id=\"categories\" class=\"span4\"><h2>Categories:</h2><form id=\"cat_f\" name=\"cat_c\"><ul class=\"cat_choice\">";
+our $HTML2 = "</ul></form></div><div id=\"doc_info\" class=\"span4\"><h2>Documentary Info</h2></div><div id=\"other_info\" class=\"span4\"><button class=\"test\">Test</button></div></div></div><script src=\"jquery/jquery.min.js\" ></script><script src=\"jquery/jquery-jvectormap-1.2.2.min.js\" ></script><script src=\"jquery/jquery-jvectormap-world-mill-en.js\" ></script><script src=\"js/documentaries.js\" ></script></body></html>";
 
 #Connect to DB
 our $dbh = DBI->connect("DBI:mysql:$database:localhost:$port", $user, $pass)
@@ -45,7 +46,15 @@ sub test_db {
 	
 	$query_h->execute() # Creates the table - if it doesn't exist
 		or die "Error quering database: " . $DBI::errstr;
-	undef $query_h;
+	
+	$query_h = $dbh->prepare("SELECT Column_name
+	FROM INFORMATION_SCHEMA.COLUMNS
+	WHERE TABLE_NAME='$table'");
+	$query_h->execute();
+	print "Column names:\n";
+	while (my @data =$query_h->fetchrow_array()) {
+		print ">---$data[0]\n";
+	}
 	
 	return 0;
 }
@@ -86,9 +95,6 @@ sub create_static_doc {
 				create_js_cat($_);
 			}
 		}
-		#print $HTML_category . "\n";
-		$CUNT = "CUNT";
-		print $TEST;
 		# This will create js/documentaries.js
 		create_js_cat();
 		
@@ -97,8 +103,7 @@ sub create_static_doc {
 	#
 	#	Once the categories have be done
 	#	Create the index.html
-	#
-
+	$HTML .= $HTML_category . $HTML2;
 	open(HTML_FILE, ">>index.html");
 	print HTML_FILE $HTML;
 	close(HTML_FILE);
@@ -258,8 +263,6 @@ if ($ARGV[0] eq '--clean-js' || $ARGV[0] eq '-c') {
 } elsif ($ARGV[0] eq '--insert' || $ARGV[0] eq '-i') {
 	insert_doc();
 } elsif ($ARGV[0] eq '--create-files' || $ARGV[0] eq '-m') {
-	#create_js_cat();
-	#create_js_cc();
 	create_static_doc();
 } elsif ($ARGV[0] eq '--check-dead-links' || $ARGV[0] eq '-d') {
 	check_dead_links(1);
